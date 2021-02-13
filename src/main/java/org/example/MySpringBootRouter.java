@@ -29,7 +29,7 @@ public class MySpringBootRouter extends RouteBuilder {
             .get("/ei")
                 .description("tessdfte")
                 .route().routeId("router-id")
-                .to("http://localhost:44325/api/pet??bridgeEndpoint=true")
+                .to("https://localhost:44325/api/pet??bridgeEndpoint=true")
                 //.to("direct:ong")
                 .endRest();
 
