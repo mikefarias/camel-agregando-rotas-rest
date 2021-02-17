@@ -130,7 +130,6 @@
       <artifactId>camel-jackson-starter</artifactId>
     </dependency>
 
-
     <!-- Test -->
     <dependency>
       <groupId>org.springframework.boot</groupId>

@@ -1,12 +1,20 @@
 package org.example;
 
+import org.apache.camel.CamelContext;
+import org.apache.camel.Exchange;
+import org.apache.camel.builder.AggregationStrategies;
 import org.apache.camel.builder.RouteBuilder;
-
+import org.apache.camel.impl.DefaultCamelContext;
+import org.apache.camel.model.dataformat.JsonLibrary;
+import org.apache.camel.model.rest.RestBindingMode;
+import org.apache.camel.processor.aggregate.GroupedExchangeAggregationStrategy;
+import org.example.beans.User;
+import org.example.beans.Usuario;
 import org.example.beans.types.PostRequestType;
 import org.example.beans.types.ResponseType;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
-
-import org.apache.camel.model.rest.RestBindingMode;
 
 /**
  * A simple Camel route that triggers from a timer and calls a bean and prints to system out.
@@ -16,49 +24,66 @@ import org.apache.camel.model.rest.RestBindingMode;
 @Component
 public class MySpringBootRouter extends RouteBuilder {
 
+    CamelContext context = new DefaultCamelContext();
+
     @Override
     public void configure() {
 
-        restConfiguration()
+        context.setStreamCaching(true);
+
+/*        restConfiguration()
                 .component("servlet")
-                .bindingMode(RestBindingMode.auto);
+                .bindingMode(RestBindingMode.json);
 
         rest("/api")
              .consumes("application/json")
              .produces("application/json")
-            .get("/ei")
-                .description("tessdfte")
+            .get("/ibge/localidades")
+                .description("IBGE Localidades")
                 .route().routeId("router-id")
-                .to("https://localhost:44325/api/pet??bridgeEndpoint=true")
-                //.to("direct:ong")
-                .endRest();
+                .marshal().json(JsonLibrary.Jackson)
+                .aggregate(constant(true)).aggregationStrategy(AggregationStrategies.groupedBody())
+                .completionSize(10)
+                //.marshal().json(JsonLibrary.Jackson)
+                //.to("https://servicodados.ibge.gov.br/api/v1/localidades/distritos/280030805?bridgeEndpoint=true").log("${body}")
+                //.to("https://servicodados.ibge.gov.br/api/v1/localidades/distritos/280060505?bridgeEndpoint=true").log("${body}")
+                .endRest();*/
 
-        from("direct:ong").routeId("ong")
-                .to("sql:select * from ong").log("${body}");
+        restConfiguration().component("servlet").bindingMode(RestBindingMode.json);
 
-/*        rest()
-                .path("/api") // This makes the API available at http://host:port/$CONTEXT_ROOT/api
+        rest("/")
+                //Endpoint que usa o Enrich EIP
+                .get("autor")
+                .route().routeId("autor")
+                .to("direct:call-autor")
+                .endRest()
+                .get("usuario")
+                .produces(MediaType.APPLICATION_JSON_VALUE)
+                .route().routeId("id")
+                //.setBody(constant("teste mike"))
+                //.aggregate(constant(true))
+                  //      .aggregationStrategy(AggregationStrategies.groupedBody())
+                    //    .completionTimeout(300)
+                //.enrich("http://localhost:3000/teste?bridgeEndpoint=true")
+                //.to("direct:user").
+                //unmarshal().json(JsonLibrary.Jackson, Usuario.class).log("${body}")
+                .to("direct:usuario")
+                .unmarshal().json(JsonLibrary.Jackson, User.class).log("${body}")
+                .endRest()
+                .get("user").to("direct:user");
 
-                .consumes("application/json")
-                .produces("application/json")
+                from("direct: usuario")
+                        .routeId("all-usuarios")
+                        .to("http://localhost:3000/usuario?bridgeEndpoint=true");
 
-                // HTTP: GET /api
-                .get("/")
-                .outType(ResponseType.class) // Setting the response type enables Camel to marshal the response to JSON
-                .to("bean:getBean") // This will invoke the Spring bean 'getBean'
+                from("direct: user").to("http://localhost:3000/user?bridgeEndpoint=true");
+        ;
+                //.endRest();
 
-                // HTTP: POST /api
-                .post()
-                .type(PostRequestType.class) // Setting the request type enables Camel to unmarshal the request to a Java object
-                .outType(ResponseType.class) // Setting the response type enables Camel to marshal the response to JSON
-                .to("bean:postBean");*/
-
-/*        rest()
-                .consumes("application/json")
-                .produces("application/json")
-                .path("/go-sports").get("/").route().transform(simple("Validando rota"+"dsfsd"+"fgsfds")).endRest();
-
-        from("rest:get:hello:/{me}")
-                .transform().simple("Hi ${header.me}");*/
+/*        rest().get("/teste3")
+                .aggre(new GroupedExchangeAggregationStrategy()).parallelProcessing()
+                .enrich("http://localhost:3000/teste?bridgeEndpoint=true")
+                .enrich("http://localhost:3000/teste2?bridgeEndpoint=true")
+                .end();*/
     }
 }
